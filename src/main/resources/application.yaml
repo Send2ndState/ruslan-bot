@@ -1,8 +1,8 @@
 bot:
-  token: ${BOT_TOKEN:7498451766:AAFkGRuTt4oeuO4JVZgKXOMrMz4QVTlG0BY}
+  token: ${BOT_TOKEN}
 
 openai:
-  token: ${OPENAI_TOKEN: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}
+  token: ${OPENAI_TOKEN}
 
 gpt:
   model: gpt-4o
