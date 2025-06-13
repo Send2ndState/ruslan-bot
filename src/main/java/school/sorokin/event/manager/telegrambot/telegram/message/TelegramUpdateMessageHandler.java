@@ -19,6 +19,7 @@ public class TelegramUpdateMessageHandler {
     private final TelegramAsyncMessageSender telegramAsyncMessageSender;
     private final TelegramTextHandler telegramTextHandler;
     private final TelegramVoiceHandler telegramVoiceHandler;
+    private final TelegramImageHandler telegramImageHandler;
 
     public BotApiMethod<?> handleMessage(Message message) {
         log.info("Start message processing: message={}", message);
@@ -27,7 +28,7 @@ public class TelegramUpdateMessageHandler {
         }
         var chatId = message.getChatId().toString();
 
-        if (message.hasVoice() || message.hasText()) {
+        if (message.hasVoice() || message.hasText() || message.hasPhoto()) {
             telegramAsyncMessageSender.sendMessageAsync(
                     chatId,
                     () -> handleMessageAsync(message),
@@ -38,9 +39,14 @@ public class TelegramUpdateMessageHandler {
     }
 
     private SendMessage handleMessageAsync(Message message) {
-        SendMessage result = message.hasVoice()
-                ? telegramVoiceHandler.processVoice(message)
-                : telegramTextHandler.processTextMessage(message);
+        SendMessage result;
+        if (message.hasVoice()) {
+            result = telegramVoiceHandler.processVoice(message);
+        } else if (message.hasPhoto()) {
+            result = telegramImageHandler.processImage(message);
+        } else {
+            result = telegramTextHandler.processTextMessage(message);
+        }
 
         result.setParseMode(ParseMode.MARKDOWNV2);
         return result;
@@ -50,7 +56,7 @@ public class TelegramUpdateMessageHandler {
         log.error("Произошла ошибка, chatId={}", chatId, throwable);
         return SendMessage.builder()
                 .chatId(chatId)
-                .text("Произошла ошибка, попробуйте позже")
+                .text("Произошла ошибка, попробуйте еще раз")
                 .build();
     }
 

@@ -35,13 +35,13 @@ public class TelegramFileService {
                 .fileId(fileId)
                 .build());
         var urlToDownloadFile = file.getFileUrl(botToken);
-        return getFileFromUrl(urlToDownloadFile);
+        return getFileFromUrl(urlToDownloadFile, getFileExtension(fileId));
     }
 
     @SneakyThrows
-    private java.io.File getFileFromUrl(String urlToDownloadFile) {
+    private java.io.File getFileFromUrl(String urlToDownloadFile, String extension) {
         URL url = new URI(urlToDownloadFile).toURL();
-        var fileTemp = java.io.File.createTempFile("telegram", ".ogg");
+        var fileTemp = java.io.File.createTempFile("telegram", extension);
 
         try (InputStream inputStream = url.openStream();
              FileOutputStream fileOutputStream = new FileOutputStream(fileTemp)
@@ -52,5 +52,22 @@ public class TelegramFileService {
             throw new RuntimeException("Error while downloading file", e);
         }
         return fileTemp;
+    }
+
+    private String getFileExtension(String fileId) {
+        // Telegram file IDs for images start with different prefixes
+        // AgAC - for photos
+        // AQAD - for documents
+        // BQAD - for videos
+        if (fileId.startsWith("AgAC")) {
+            return ".jpg";
+        } else if (fileId.startsWith("AQAD")) {
+            // Check if it's a JPEG document
+            return ".jpeg";
+        } else if (fileId.startsWith("BQAD")) {
+            return ".mp4";
+        }
+        // Default to .ogg for voice messages
+        return ".ogg";
     }
 }

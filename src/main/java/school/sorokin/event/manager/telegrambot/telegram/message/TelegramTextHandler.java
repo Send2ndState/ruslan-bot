@@ -16,7 +16,8 @@ public class TelegramTextHandler {
         var text = message.getText();
         var chatId = message.getChatId();
 
-        var gptGeneratedText = gptService.getResponseChatForUser(chatId, text);
+        // Отправляем текст напрямую в GPT
+        var gptGeneratedText = gptService.getResponseChatForUserWithImages(chatId, text, null);
         return new SendMessage(chatId.toString(), gptGeneratedText);
     }
 }

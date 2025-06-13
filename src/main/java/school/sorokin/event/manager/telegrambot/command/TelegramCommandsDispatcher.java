@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.List;
 
@@ -26,7 +25,7 @@ public class TelegramCommandsDispatcher {
         if (suitedHandler.isEmpty()) {
             return SendMessage.builder()
                     .chatId(message.getChatId())
-                    .text("Not supported command: command=%s".formatted(text))
+                    .text("Такая комманда не поддерживается: %s, поддерживаемые команды: /start, /clear".formatted(text))
                     .build();
         }
         return suitedHandler.orElseThrow().processCommand(message);

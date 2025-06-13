@@ -4,10 +4,8 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import school.sorokin.event.manager.telegrambot.command.TelegramCommandsDispatcher;
 import school.sorokin.event.manager.telegrambot.openai.ChatGptService;
 import school.sorokin.event.manager.telegrambot.openai.TranscribeVoiceToTextService;
-import school.sorokin.event.manager.telegrambot.telegram.TelegramAsyncMessageSender;
 import school.sorokin.event.manager.telegrambot.telegram.TelegramFileService;
 
 @Service
@@ -26,7 +24,7 @@ public class TelegramVoiceHandler {
         var file = telegramFileService.getFile(fileId);
         var text = transcribeVoiceToTextService.transcribe(file);
 
-        var gptGeneratedText = gptService.getResponseChatForUser(chatId, text);
+        var gptGeneratedText = gptService.getResponseChatForUserWithImages(chatId, text, null);
         return new SendMessage(chatId.toString(), gptGeneratedText);
     }
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 
 @Builder
-public record Message (
+public record Message(
     @JsonProperty("role") String role,
-    @JsonProperty("content") String content
+    @JsonProperty("content") Object content
 ) {}

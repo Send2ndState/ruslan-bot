@@ -34,7 +34,7 @@ public class TelegramAsyncMessageSender {
     ) {
         log.info("Send message async: chatId={}", chatId);
         var message = defaultAbsSender.execute(SendMessage.builder()
-                        .text("Ваш запрос принят в обработку, ожидайте")
+                        .text("Обрабатываю запрос, момент...")
                         .chatId(chatId)
                 .build());
 
