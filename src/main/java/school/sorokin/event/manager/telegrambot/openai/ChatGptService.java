@@ -62,10 +62,10 @@ public class ChatGptService {
         // Add system prompt if it's a new chat
         if (chatGptHistoryService.getUserHistory(userId).map(history -> history.chatMessages().isEmpty()).orElse(true)) {
             log.info("Adding system prompt for new chat");
-            var systemMessage = Message.builder()
-                    .role("system")
-                    .content(gptConfig.getSystemPrompt())
-                    .build();
+            var systemMessage = new Message(
+                    "system",
+                    gptConfig.getSystemPrompt()
+            );
             chatGptHistoryService.addMessageToHistory(userId, systemMessage);
         }
         
@@ -79,26 +79,26 @@ public class ChatGptService {
             
             log.info("Message content structure: {}", content);
             
-            userMessage = Message.builder()
-                    .role("user")
-                    .content(content)
-                    .build();
+            userMessage = new Message(
+                    "user",
+                    content
+            );
         } else {
             log.info("Creating text message for user {}", userId);
-            userMessage = Message.builder()
-                    .content(userTextInput)
-                    .role("user")
-                    .build();
+            userMessage = new Message(
+                    "user",
+                    userTextInput
+            );
         }
 
         var history = chatGptHistoryService.addMessageToHistory(userId, userMessage);
         log.info("Current chat history size: {}", history.chatMessages().size());
 
-        var request = ChatCompletionRequest.builder()
-                .model(gptConfig.getModel())
-                .messages(history.chatMessages())
-                .maxTokens(1000)
-                .build();
+        var request = new ChatCompletionRequest(
+                gptConfig.getModel(),
+                history.chatMessages(),
+                2000
+        );
         
         log.info("Sending request to GPT with model: {}", request.model());
         log.info("Request messages: {}", request.messages());
@@ -111,10 +111,10 @@ public class ChatGptService {
         log.info("GPT response content: {}", messageFromGpt.content());
 
         // Convert the response to a text message to maintain chat history
-        Message textMessage = Message.builder()
-                .role("assistant")
-                .content(messageFromGpt.content().toString())
-                .build();
+        Message textMessage = new Message(
+                "assistant",
+                messageFromGpt.content().toString()
+        );
 
         chatGptHistoryService.addMessageToHistory(userId, textMessage);
 

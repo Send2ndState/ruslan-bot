@@ -13,7 +13,8 @@ public class StartCommandHandler implements TelegramCommandHandler {
 
     private final String HELLO_MESSAGE = """
             Привет %s,
-            Этим ботом ты можешь пользоваться для общения с GPT
+            Для старта общения напиши свой пол и возраст.
+            Пример: "Я мужчина, мне 38."
             Каждое сообщение запоминается для контекста
             Очистить контекст можно с помощью команды /clear
             """;
