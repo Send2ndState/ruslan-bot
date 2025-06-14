@@ -14,10 +14,8 @@ public class TranscribeVoiceToTextService {
     private final OpenAIClient openAIClient;
 
     public String transcribe(File audioFile) {
-        var response = openAIClient.createTranscription(CreateTranscriptionRequest.builder()
-                        .audioFile(audioFile)
-                        .model("whisper-1")
-                .build());
+        var request = new CreateTranscriptionRequest(audioFile, "whisper-1");
+        var response = openAIClient.createTranscription(request);
         return response.text();
     }
 
