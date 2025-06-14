@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import school.sorokin.event.manager.telegrambot.openai.ChatGptService;
+import school.sorokin.event.manager.telegrambot.openai.ChatGptHistoryService;
 import school.sorokin.event.manager.telegrambot.telegram.TelegramFileService;
 import school.sorokin.event.manager.telegrambot.telegram.state.UserImageState;
 
@@ -22,6 +23,7 @@ public class TelegramImageHandler {
     private final ChatGptService gptService;
     private final TelegramFileService telegramFileService;
     private final UserImageState userImageState;
+    private final ChatGptHistoryService chatGptHistoryService;
 
     public SendMessage processImage(Message message) {
         var chatId = message.getChatId();
@@ -33,8 +35,7 @@ public class TelegramImageHandler {
 
         String fileId;
         if (message.hasPhoto()) {
-            var photos = message.getPhoto();
-            var photo = photos.get(photos.size() / 2); // Take middle quality photo
+            var photo = message.getPhoto().get(message.getPhoto().size() - 1);
             fileId = photo.getFileId();
         } else if (message.hasDocument()) {
             fileId = message.getDocument().getFileId();
@@ -62,16 +63,20 @@ public class TelegramImageHandler {
 
             userImageState.incrementImageCount(chatId);
 
-            // Отправляем фото в GPT
+            // Создаем объект изображения для истории
+            Map<String, Object> imageObject = Map.of(
+                "type", "image_url",
+                "image_url", Map.of("url", "data:image/jpeg;base64," + base64Image)
+            );
+
+            // Добавляем изображение в историю
+            chatGptHistoryService.addImageToHistory(chatId, imageObject);
+
+            // Отправляем фото в GPT вместе с историей
             var gptGeneratedText = gptService.getResponseChatForUserWithImages(
                     chatId,
                     message.getCaption() != null ? message.getCaption() : "",
-                    List.of(
-                            Map.of(
-                                    "type", "image_url",
-                                    "image_url", Map.of("url", "data:image/jpeg;base64," + base64Image)
-                            )
-                    )
+                    List.of(imageObject)
             );
 
             if (gptGeneratedText == null || gptGeneratedText.trim().isEmpty()) {
@@ -83,19 +88,9 @@ public class TelegramImageHandler {
             return new SendMessage(chatId.toString(), gptGeneratedText);
 
         } catch (Exception e) {
-            log.error("Error processing image for chatId: {}", chatId, e);
-            String errorMessage = e.getMessage();
-            if (errorMessage == null || errorMessage.trim().isEmpty()) {
-                errorMessage = "Неизвестная ошибка при обработке изображения";
-            }
+            log.error("Error processing image", e);
             return new SendMessage(chatId.toString(),
-                    "Извините, произошла ошибка при обработке изображения: " + errorMessage + ". Пожалуйста, попробуйте еще раз.");
-        } finally {
-            // Clean up the temporary file
-            if (file != null && file.exists()) {
-                file.delete();
-                log.info("Temporary file deleted");
-            }
+                    "Произошла ошибка при обработке изображения. Пожалуйста, попробуйте еще раз.");
         }
     }
 } 

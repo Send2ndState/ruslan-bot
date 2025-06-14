@@ -52,10 +52,10 @@ public class ChatGptService {
     public String getResponseChatForUserWithImages(
             Long userId,
             String userTextInput,
-            List<Map<String, Object>> images
+            List<Map<String, Object>> newImages
     ) {
         log.info("Starting getResponseChatForUser for userId: {}, text: {}, images count: {}", 
-            userId, userTextInput, images != null ? images.size() : 0);
+            userId, userTextInput, newImages != null ? newImages.size() : 0);
             
         chatGptHistoryService.createHistoryIfNotExist(userId);
         
@@ -70,12 +70,24 @@ public class ChatGptService {
         }
         
         Message userMessage;
-        if (images != null && !images.isEmpty()) {
-            log.info("Creating message with {} images for user {}", images.size(), userId);
+        List<Map<String, Object>> allImages = new ArrayList<>();
+        
+        // Добавляем изображения из истории
+        chatGptHistoryService.getUserHistory(userId).ifPresent(history -> {
+            allImages.addAll(history.images());
+        });
+        
+        // Добавляем новые изображения
+        if (newImages != null) {
+            allImages.addAll(newImages);
+        }
+        
+        if (!allImages.isEmpty()) {
+            log.info("Creating message with {} images for user {}", allImages.size(), userId);
             // Create a message with image content
             List<Object> content = new ArrayList<>();
             content.add(Map.of("type", "text", "text", userTextInput));
-            content.addAll(images);
+            content.addAll(allImages);
             
             log.info("Message content structure: {}", content);
             
@@ -97,7 +109,9 @@ public class ChatGptService {
         var request = new ChatCompletionRequest(
                 gptConfig.getModel(),
                 history.chatMessages(),
-                2000
+                4000,
+                1.0,
+                1.0
         );
         
         log.info("Sending request to GPT with model: {}", request.model());
