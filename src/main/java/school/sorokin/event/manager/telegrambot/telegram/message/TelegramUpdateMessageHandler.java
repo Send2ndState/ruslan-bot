@@ -20,6 +20,7 @@ public class TelegramUpdateMessageHandler {
     private final TelegramTextHandler telegramTextHandler;
     private final TelegramVoiceHandler telegramVoiceHandler;
     private final TelegramImageHandler telegramImageHandler;
+    private final TelegramVideoHandler telegramVideoHandler;
 
     public BotApiMethod<?> handleMessage(Message message) {
         log.info("Start message processing: message={}", message);
@@ -28,7 +29,8 @@ public class TelegramUpdateMessageHandler {
         }
         var chatId = message.getChatId().toString();
 
-        if (message.hasVoice() || message.hasText() || message.hasPhoto()) {
+        if (message.hasVoice() || message.hasText() || message.hasPhoto() || message.hasVideo() || 
+            (message.hasDocument() && isImageDocument(message))) {
             telegramAsyncMessageSender.sendMessageAsync(
                     chatId,
                     () -> handleMessageAsync(message),
@@ -38,12 +40,27 @@ public class TelegramUpdateMessageHandler {
         return null;
     }
 
+    private boolean isImageDocument(Message message) {
+        if (!message.hasDocument()) {
+            return false;
+        }
+        String mimeType = message.getDocument().getMimeType();
+        return mimeType != null && (
+            mimeType.startsWith("image/jpeg") || 
+            mimeType.startsWith("image/jpg") || 
+            mimeType.startsWith("image/png") || 
+            mimeType.startsWith("image/gif")
+        );
+    }
+
     private SendMessage handleMessageAsync(Message message) {
         SendMessage result;
         if (message.hasVoice()) {
             result = telegramVoiceHandler.processVoice(message);
-        } else if (message.hasPhoto()) {
+        } else if (message.hasPhoto() || (message.hasDocument() && isImageDocument(message))) {
             result = telegramImageHandler.processImage(message);
+        } else if (message.hasVideo()) {
+            result = telegramVideoHandler.processVideo(message);
         } else {
             result = telegramTextHandler.processTextMessage(message);
         }
