@@ -25,18 +25,49 @@ public class CallbackQueryHandler {
         var userData = userStateService.getUserData(chatId);
 
         switch (data) {
+            case "continue_after_article":
+                userStateService.updateUserData(chatId, userData.withState(UserState.WAITING_FIRST_PALM));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Отлично! Теперь отправьте фотографию первой ладони")
+                        .build();
+
             case "gender_male":
                 userStateService.updateUserData(chatId, userData.withGender("Мужчина").withState(UserState.WAITING_QUESTIONS_CHOICE));
                 return SendMessage.builder()
                         .chatId(chatId)
-                        .text("Для более точно анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .text("Для более точного анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .replyMarkup(InlineKeyboardMarkup.builder()
+                                .keyboard(List.of(
+                                        List.of(InlineKeyboardButton.builder()
+                                                .text("Ответить на вопросы")
+                                                .callbackData("answer_questions")
+                                                .build()),
+                                        List.of(InlineKeyboardButton.builder()
+                                                .text("Не хочу вопросы - готов получить приблизительный анализ")
+                                                .callbackData("skip_questions")
+                                                .build())
+                                ))
+                                .build())
                         .build();
 
             case "gender_female":
                 userStateService.updateUserData(chatId, userData.withGender("Женщина").withState(UserState.WAITING_QUESTIONS_CHOICE));
                 return SendMessage.builder()
                         .chatId(chatId)
-                        .text("Для более точно анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .text("Для более точного анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .replyMarkup(InlineKeyboardMarkup.builder()
+                                .keyboard(List.of(
+                                        List.of(InlineKeyboardButton.builder()
+                                                .text("Ответить на вопросы")
+                                                .callbackData("answer_questions")
+                                                .build()),
+                                        List.of(InlineKeyboardButton.builder()
+                                                .text("Не хочу вопросы - готов получить приблизительный анализ")
+                                                .callbackData("skip_questions")
+                                                .build())
+                                ))
+                                .build())
                         .build();
 
             case "answer_questions":

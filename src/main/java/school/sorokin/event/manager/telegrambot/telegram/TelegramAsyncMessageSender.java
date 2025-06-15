@@ -32,25 +32,13 @@ public class TelegramAsyncMessageSender {
             Supplier<SendMessage> action,
             Function<Throwable, SendMessage> onErrorHandler
     ) {
-        log.info("Send message async: chatId={}", chatId);
-        var message = defaultAbsSender.execute(SendMessage.builder()
-                        .text("Обрабатываю запрос, момент...")
-                        .chatId(chatId)
-                .build());
-
         CompletableFuture.supplyAsync(action, executorService)
                 .exceptionally(onErrorHandler)
                 .thenAccept(sendMessage -> {
                     try {
-                        log.info("Send edit message async: chatId={}", chatId);
-                        defaultAbsSender.execute(EditMessageText.builder()
-                                        .chatId(chatId)
-                                        .messageId(message.getMessageId())
-                                        .text(sendMessage.getText())
-                                .build());
+                        defaultAbsSender.execute(sendMessage);
                     } catch (TelegramApiException e) {
-                        log.error("Error while send request to telegram", e);
-                        throw new RuntimeException(e);
+                        log.error("Error while sending message", e);
                     }
                 });
     }

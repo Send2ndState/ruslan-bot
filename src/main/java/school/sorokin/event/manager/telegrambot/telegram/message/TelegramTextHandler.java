@@ -1,6 +1,5 @@
 package school.sorokin.event.manager.telegrambot.telegram.message;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,6 +13,9 @@ import school.sorokin.event.manager.telegrambot.telegram.state.UserState;
 import school.sorokin.event.manager.telegrambot.telegram.state.UserStateService;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +46,7 @@ public class TelegramTextHandler {
 
         switch (userData.state()) {
             case WAITING_BIRTH_DATE:
-                return handleBirthDate(chatId, userData, text);
+                return handleBirthDate(chatId, text);
             case WAITING_GENDER:
                 return handleGender(chatId, userData, text);
             case WAITING_QUESTIONS_ANSWERS:
@@ -54,37 +56,46 @@ public class TelegramTextHandler {
         }
     }
 
-    private SendMessage handleBirthDate(Long chatId, UserData userData, String text) {
-        userStateService.updateUserData(chatId, userData.withBirthDate(text).withState(UserState.WAITING_GENDER));
-        
+    private SendMessage handleBirthDate(Long chatId, String text) {
+        userStateService.updateUserData(chatId, userStateService.getUserData(chatId).withBirthDate(text).withState(UserState.WAITING_GENDER));
+
         var keyboard = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(
-                    List.of(InlineKeyboardButton.builder().text("Мужчина").callbackData("gender_male").build()),
-                    List.of(InlineKeyboardButton.builder().text("Женщина").callbackData("gender_female").build())
-                ))
+                .keyboard(List.of(List.of(
+                        InlineKeyboardButton.builder()
+                                .text("Мужчина")
+                                .callbackData("gender_male")
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("Женщина")
+                                .callbackData("gender_female")
+                                .build()
+                )))
                 .build();
 
         return SendMessage.builder()
                 .chatId(chatId)
-                .text("Скажите, вы -")
+                .text("Скажите, вы-")
                 .replyMarkup(keyboard)
                 .build();
     }
 
     private SendMessage handleGender(Long chatId, UserData userData, String text) {
         userStateService.updateUserData(chatId, userData.withGender(text).withState(UserState.WAITING_QUESTIONS_CHOICE));
-        
-        var keyboard = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(
-                    List.of(InlineKeyboardButton.builder().text("Ответить на вопросы").callbackData("answer_questions").build()),
-                    List.of(InlineKeyboardButton.builder().text("Не хочу вопросы - готов получить приблизительный анализ").callbackData("skip_questions").build())
-                ))
-                .build();
-
         return SendMessage.builder()
                 .chatId(chatId)
-                .text("Для более точно анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
-                .replyMarkup(keyboard)
+                .text("Для более точного анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                .replyMarkup(InlineKeyboardMarkup.builder()
+                        .keyboard(List.of(
+                                List.of(InlineKeyboardButton.builder()
+                                        .text("Ответить на вопросы")
+                                        .callbackData("answer_questions")
+                                        .build()),
+                                List.of(InlineKeyboardButton.builder()
+                                        .text("Не хочу вопросы - готов получить приблизительный анализ")
+                                        .callbackData("skip_questions")
+                                        .build())
+                        ))
+                        .build())
                 .build();
     }
 
@@ -131,18 +142,23 @@ public class TelegramTextHandler {
         String basePrompt = userData.wantsDetailedAnalysis() ? systemPromptWithQuestions : systemPromptWithoutQuestions;
         
         if (userData.wantsDetailedAnalysis()) {
-            StringBuilder additionalInfo = new StringBuilder();
-            additionalInfo.append("Дополнительная информация о человеке:\n");
-            additionalInfo.append("Дата рождения: %s\n".formatted(userData.birthDate()));
-            additionalInfo.append("Пол: %s\n\n".formatted(userData.gender()));
-            additionalInfo.append("Ответы на вопросы:\n");
-            for (int i = 0; i < userData.questionAnswers().size(); i++) {
-                additionalInfo.append("%d. %s\n".formatted(i + 1, UserStateService.QUESTIONS[i]));
-                additionalInfo.append("Ответ: %s\n\n".formatted(userData.questionAnswers().get(i)));
-            }
-            return basePrompt.formatted(userData.gender(), additionalInfo.toString());
+            return basePrompt.formatted(
+                userData.gender(),
+                userData.birthDate(),
+                userData.questionAnswers().get(0),
+                userData.questionAnswers().get(1),
+                userData.questionAnswers().get(2),
+                userData.questionAnswers().get(3),
+                userData.questionAnswers().get(4),
+                userData.questionAnswers().get(5),
+                userData.questionAnswers().get(6),
+                userData.questionAnswers().get(7),
+                userData.questionAnswers().get(8),
+                userData.questionAnswers().get(9),
+                userData.questionAnswers().get(10)
+            );
         } else {
-            return basePrompt.formatted(userData.gender(), "");
+            return basePrompt.formatted(userData.gender(), userData.birthDate());
         }
     }
 }

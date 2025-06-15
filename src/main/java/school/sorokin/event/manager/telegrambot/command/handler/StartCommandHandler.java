@@ -33,13 +33,29 @@ public class StartCommandHandler implements TelegramCommandHandler {
         if (userData.lastAnalysisTime() != null) {
             var hoursSinceLastAnalysis = ChronoUnit.HOURS.between(userData.lastAnalysisTime(), LocalDateTime.now());
             if (hoursSinceLastAnalysis < 24) {
-                return new SendMessage(chatId.toString(), 
-                    "Анализ можно пройти не чаще раза в сутки. Возвращайтесь завтра или попробуйте с другого аккаунта");
+                return SendMessage.builder()
+                    .chatId(chatId.toString())
+                    .text("Анализ можно пройти не чаще раза в сутки. Возвращайтесь завтра или попробуйте с другого аккаунта")
+                    .build();
             }
         }
 
-        userStateService.updateUserData(chatId, userData.withState(UserState.WAITING_BIRTH_DATE));
-        return new SendMessage(chatId.toString(), "Добро пожаловать! Для начала анализа, пожалуйста, введите вашу дату рождения в формате ДД.ММ.ГГГГ");
+        // Создаем клавиатуру с кнопкой "Продолжить"
+        var keyboard = InlineKeyboardMarkup.builder()
+            .keyboard(List.of(
+                List.of(InlineKeyboardButton.builder()
+                    .text("Продолжить")
+                    .callbackData("continue_after_article")
+                    .build())
+            ))
+            .build();
+
+        // Отправляем статью с кнопкой
+        return SendMessage.builder()
+            .chatId(chatId.toString())
+            .text(ARTICLE_TEXT)
+            .replyMarkup(keyboard)
+            .build();
     }
 
     @Override

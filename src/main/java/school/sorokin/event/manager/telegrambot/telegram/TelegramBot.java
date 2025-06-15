@@ -29,28 +29,31 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         try {
-            var method = processUpdate(update);
-            if (method != null ) {
+            log.info("Received update: {}", update);
+            var method = telegramUpdateMessageHandler.handleMessage(update);
+            if (method != null) {
+                log.info("Sending response: {}", method);
                 sendApiMethod(method);
             }
         } catch (Exception e) {
             log.error("Error while processing update", e);
-            sendUserErrorMessage(update.getMessage().getChatId());
+            if (update.hasMessage()) {
+                sendUserErrorMessage(update.getMessage().getChatId());
+            } else if (update.hasCallbackQuery()) {
+                sendUserErrorMessage(update.getCallbackQuery().getMessage().getChatId());
+            }
         }
     }
 
-    private BotApiMethod<?> processUpdate(Update update) {
-        return update.hasMessage()
-                ? telegramUpdateMessageHandler.handleMessage(update.getMessage())
-                : null;
-    }
-
-    @SneakyThrows
-    private void sendUserErrorMessage(Long userId) {
-        sendApiMethod(SendMessage.builder()
-                .chatId(userId)
-                .text("Произошла ошибка, попробуйте позже")
-                .build());
+    private void sendUserErrorMessage(Long chatId) {
+        try {
+            execute(SendMessage.builder()
+                    .chatId(chatId)
+                    .text("Произошла ошибка при обработке сообщения. Пожалуйста, попробуйте еще раз.")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error while sending error message", e);
+        }
     }
 
     @Override
