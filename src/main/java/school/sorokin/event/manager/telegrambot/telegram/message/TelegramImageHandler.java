@@ -6,14 +6,16 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import school.sorokin.event.manager.telegrambot.openai.ChatGptService;
-import school.sorokin.event.manager.telegrambot.openai.ChatGptHistoryService;
 import school.sorokin.event.manager.telegrambot.telegram.TelegramFileService;
-import school.sorokin.event.manager.telegrambot.telegram.state.UserImageState;
+import school.sorokin.event.manager.telegrambot.telegram.state.UserState;
+import school.sorokin.event.manager.telegrambot.telegram.state.UserStateService;
 
 import java.util.Base64;
 import java.nio.file.Files;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -22,20 +24,25 @@ public class TelegramImageHandler {
 
     private final ChatGptService gptService;
     private final TelegramFileService telegramFileService;
-    private final UserImageState userImageState;
-    private final ChatGptHistoryService chatGptHistoryService;
+    private final UserStateService userStateService;
+
+    // Временное хранилище для изображений текущего анализа
+    private final Map<Long, List<String>> currentAnalysisImages = new ConcurrentHashMap<>();
 
     public SendMessage processImage(Message message) {
         var chatId = message.getChatId();
+        var userData = userStateService.getUserData(chatId);
 
-        if (!userImageState.canSendMoreImages(chatId)) {
-            return new SendMessage(chatId.toString(),
-                    "Вы уже отправили максимальное количество изображений (4) за сегодня. Попробуйте завтра или отправьте текстовое или голосовое сообщение.");
+        // Если анализ уже завершен, отправляем сообщение о записи на созвон
+        if (userData.state() == UserState.ANALYSIS_COMPLETED) {
+            return new SendMessage(chatId.toString(), 
+                "Анализ завершен, жду вас в @mozibiz, чтобы провести еще один анализ напишите /start");
         }
 
         String fileId;
         if (message.hasPhoto()) {
-            var photo = message.getPhoto().get(message.getPhoto().size() - 1);
+            var photos = message.getPhoto();
+            var photo = photos.get(photos.size() / 2); // Take middle quality photo
             fileId = photo.getFileId();
         } else if (message.hasDocument()) {
             fileId = message.getDocument().getFileId();
@@ -44,53 +51,53 @@ public class TelegramImageHandler {
                     "Не удалось обработать изображение. Пожалуйста, попробуйте отправить изображение еще раз.");
         }
 
-        log.info("Processing image with fileId: {}", fileId);
-
         var file = telegramFileService.getFile(fileId);
         if (file == null) {
-            log.error("Failed to download file for fileId: {}", fileId);
             return new SendMessage(chatId.toString(),
                     "Не удалось загрузить изображение. Пожалуйста, попробуйте отправить изображение еще раз.");
         }
 
-        log.info("Downloaded file to: {}", file.getAbsolutePath());
-
         try {
-            // Convert image to base64
             byte[] fileContent = Files.readAllBytes(file.toPath());
             String base64Image = Base64.getEncoder().encodeToString(fileContent);
-            log.info("Image converted to base64, length: {}", base64Image.length());
 
-            userImageState.incrementImageCount(chatId);
+            // Добавляем изображение во временное хранилище
+            currentAnalysisImages.computeIfAbsent(chatId, k -> new ArrayList<>()).add(base64Image);
 
-            // Создаем объект изображения для истории
-            Map<String, Object> imageObject = Map.of(
-                "type", "image_url",
-                "image_url", Map.of("url", "data:image/jpeg;base64," + base64Image)
-            );
-
-            // Добавляем изображение в историю
-            chatGptHistoryService.addImageToHistory(chatId, imageObject);
-
-            // Отправляем фото в GPT вместе с историей
-            var gptGeneratedText = gptService.getResponseChatForUserWithImages(
-                    chatId,
-                    message.getCaption() != null ? message.getCaption() : "",
-                    List.of(imageObject)
-            );
-
-            if (gptGeneratedText == null || gptGeneratedText.trim().isEmpty()) {
-                log.error("Empty response from GPT for chatId: {}", chatId);
-                return new SendMessage(chatId.toString(),
-                        "Не удалось получить ответ от сервиса. Пожалуйста, попробуйте еще раз.");
+            // Если это первое изображение, запрашиваем второе
+            if (currentAnalysisImages.get(chatId).size() == 1) {
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Отлично! Теперь отправьте фотографию второй ладони")
+                        .build();
             }
-
-            return new SendMessage(chatId.toString(), gptGeneratedText);
-
+            // Если это второе изображение, переходим к запросу даты рождения
+            else if (currentAnalysisImages.get(chatId).size() == 2) {
+                userStateService.updateUserData(chatId, userData.withState(UserState.WAITING_BIRTH_DATE));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Спасибо! Теперь, пожалуйста, напишите вашу дату рождения в формате ДД.ММ.ГГГГ")
+                        .build();
+            }
+            // Если изображений больше двух, игнорируем
+            else {
+                return new SendMessage(chatId.toString(),
+                        "Пожалуйста, следуйте инструкциям бота.");
+            }
         } catch (Exception e) {
             log.error("Error processing image", e);
             return new SendMessage(chatId.toString(),
                     "Произошла ошибка при обработке изображения. Пожалуйста, попробуйте еще раз.");
         }
+    }
+
+    // Метод для получения изображений текущего анализа
+    public List<String> getCurrentAnalysisImages(Long chatId) {
+        return currentAnalysisImages.getOrDefault(chatId, new ArrayList<>());
+    }
+
+    // Метод для очистки изображений после завершения анализа
+    public void clearCurrentAnalysisImages(Long chatId) {
+        currentAnalysisImages.remove(chatId);
     }
 } 

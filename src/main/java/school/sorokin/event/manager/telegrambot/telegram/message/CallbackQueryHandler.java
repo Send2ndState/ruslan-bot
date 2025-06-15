@@ -1,0 +1,69 @@
+package school.sorokin.event.manager.telegrambot.telegram.message;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import school.sorokin.event.manager.telegrambot.telegram.state.UserData;
+import school.sorokin.event.manager.telegrambot.telegram.state.UserState;
+import school.sorokin.event.manager.telegrambot.telegram.state.UserStateService;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CallbackQueryHandler {
+
+    private final UserStateService userStateService;
+
+    public SendMessage processCallbackQuery(CallbackQuery callbackQuery) {
+        var chatId = callbackQuery.getMessage().getChatId();
+        var data = callbackQuery.getData();
+        var userData = userStateService.getUserData(chatId);
+
+        switch (data) {
+            case "gender_male":
+                userStateService.updateUserData(chatId, userData.withGender("Мужчина").withState(UserState.WAITING_QUESTIONS_CHOICE));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Для более точно анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .build();
+
+            case "gender_female":
+                userStateService.updateUserData(chatId, userData.withGender("Женщина").withState(UserState.WAITING_QUESTIONS_CHOICE));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Для более точно анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .build();
+
+            case "answer_questions":
+                userStateService.updateUserData(chatId, userData.withWantsDetailedAnalysis(true).withState(UserState.WAITING_QUESTIONS_ANSWERS));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text(UserStateService.QUESTIONS[0])
+                        .build();
+
+            case "skip_questions":
+                userStateService.updateUserData(chatId, userData.withWantsDetailedAnalysis(false).withState(UserState.WAITING_QUESTIONS_ANSWERS));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Хорошо, давайте перейдем к анализу.")
+                        .build();
+
+            default:
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Пожалуйста, используйте кнопки для навигации.")
+                        .build();
+        }
+    }
+
+    public AnswerCallbackQuery answerCallbackQuery(CallbackQuery callbackQuery) {
+        return AnswerCallbackQuery.builder()
+                .callbackQueryId(callbackQuery.getId())
+                .build();
+    }
+} 
