@@ -86,11 +86,11 @@ public class TelegramTextHandler {
         userStateService.updateUserData(chatId, userData.withGender(text).withState(UserState.WAITING_QUESTIONS_CHOICE));
         return SendMessage.builder()
                 .chatId(chatId)
-                .text("Для более точного анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                .text("Для более точного анализа, нужно ответить еще на ряд коротких вопросов, это поможет мне составить более подробный анализ")
                 .replyMarkup(InlineKeyboardMarkup.builder()
                         .keyboard(List.of(
                                 List.of(InlineKeyboardButton.builder()
-                                        .text("Ответить на вопросы")
+                                        .text("Ответить на вопросы (отвечать можно голосовыми)")
                                         .callbackData("answer_questions")
                                         .build()),
                                 List.of(InlineKeyboardButton.builder()
@@ -144,7 +144,6 @@ public class TelegramTextHandler {
     private String buildPrompt(UserData userData) {
         String basePrompt = userData.wantsDetailedAnalysis() ? systemPromptWithQuestions : systemPromptWithoutQuestions;
         
-
         if (userData.wantsDetailedAnalysis()) {
             return basePrompt.formatted(
                 userData.gender(),
@@ -163,6 +162,66 @@ public class TelegramTextHandler {
             );
         } else {
             return basePrompt.formatted(userData.gender(), userData.birthDate());
+        }
+    }
+
+    public SendMessage processCallbackQuery(String callbackData, Long chatId, UserData userData) {
+        switch (callbackData) {
+            case "gender_male":
+            case "gender_female":
+                String gender = callbackData.equals("gender_male") ? "Мужчина" : "Женщина";
+                userStateService.updateUserData(chatId, userData.withGender(gender).withState(UserState.WAITING_QUESTIONS_CHOICE));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Для более точного анализа, нужно ответить еще на ряд коротких вопросов, это поможет мне составить более подробный анализ")
+                        .replyMarkup(InlineKeyboardMarkup.builder()
+                                .keyboard(List.of(
+                                        List.of(InlineKeyboardButton.builder()
+                                                .text("Ответить на вопросы (отвечать можно голосовыми)")
+                                                .callbackData("answer_questions")
+                                                .build()),
+                                        List.of(InlineKeyboardButton.builder()
+                                                .text("Не хочу вопросы - готов получить приблизительный анализ")
+                                                .callbackData("skip_questions")
+                                                .build())
+                                ))
+                                .build())
+                        .build();
+            case "answer_questions":
+                userStateService.updateUserData(chatId, userData.withWantsDetailedAnalysis(true).withState(UserState.WAITING_QUESTIONS_ANSWERS));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text(UserStateService.QUESTIONS[0])
+                        .build();
+            case "skip_questions":
+                userStateService.updateUserData(chatId, userData.withWantsDetailedAnalysis(false).withState(UserState.COMPLETED));
+                String prompt = buildPrompt(userData);
+                var images = imageHandler.getCurrentAnalysisImages(chatId);
+                var gptResponse = gptService.getResponseChatForUserWithImages(chatId, userTextInput, prompt,
+                    images.stream()
+                        .map(imageUrl -> Map.<String, Object>of("url", imageUrl))
+                        .toList());
+                
+                userStateService.updateUserData(chatId, 
+                    userData.withLastAnalysisTime(LocalDateTime.now())
+                          .withState(UserState.ANALYSIS_COMPLETED));
+
+                imageHandler.clearCurrentAnalysisImages(chatId);
+
+                String finalMessage = gptResponse + "\n\n" +
+                    "Если хотите больше ясности и конкретных шагов — приглашаю вас на созвон, " +
+                    "на котором помогу вас встроить смыслы в ваше дело и применить их в маркетинге и продажах\n\n" +
+                    "Для того, чтобы записаться на созвон, пишите в личные сообщения в @mozibiz слово «смысл»";
+
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text(finalMessage)
+                        .build();
+            default:
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Пожалуйста, следуйте инструкциям бота.")
+                        .build();
         }
     }
 }

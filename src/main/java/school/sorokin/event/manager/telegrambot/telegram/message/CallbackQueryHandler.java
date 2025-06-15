@@ -36,11 +36,11 @@ public class CallbackQueryHandler {
                 userStateService.updateUserData(chatId, userData.withGender("Мужчина").withState(UserState.WAITING_QUESTIONS_CHOICE));
                 return SendMessage.builder()
                         .chatId(chatId)
-                        .text("Для более точного анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .text("Для более точного анализа, нужно ответить еще на ряд коротких вопросов, это поможет мне составить более подробный анализ")
                         .replyMarkup(InlineKeyboardMarkup.builder()
                                 .keyboard(List.of(
                                         List.of(InlineKeyboardButton.builder()
-                                                .text("Ответить на вопросы")
+                                                .text("Ответить на вопросы (отвечать можно голосовыми)")
                                                 .callbackData("answer_questions")
                                                 .build()),
                                         List.of(InlineKeyboardButton.builder()
@@ -55,11 +55,11 @@ public class CallbackQueryHandler {
                 userStateService.updateUserData(chatId, userData.withGender("Женщина").withState(UserState.WAITING_QUESTIONS_CHOICE));
                 return SendMessage.builder()
                         .chatId(chatId)
-                        .text("Для более точного анализа, нужно ответить еще на ряд вопросов, это поможет мне составить более подробный анализ")
+                        .text("Для более точного анализа, нужно ответить еще на ряд коротких вопросов, это поможет мне составить более подробный анализ")
                         .replyMarkup(InlineKeyboardMarkup.builder()
                                 .keyboard(List.of(
                                         List.of(InlineKeyboardButton.builder()
-                                                .text("Ответить на вопросы")
+                                                .text("Ответить на вопросы (отвечать можно голосовыми)")
                                                 .callbackData("answer_questions")
                                                 .build()),
                                         List.of(InlineKeyboardButton.builder()
@@ -81,7 +81,7 @@ public class CallbackQueryHandler {
                 userStateService.updateUserData(chatId, userData.withWantsDetailedAnalysis(false).withState(UserState.WAITING_QUESTIONS_ANSWERS));
                 return SendMessage.builder()
                         .chatId(chatId)
-                        .text("Хорошо, давайте перейдем к анализу.")
+                        .text("Как скажете. Провожу анализ, минутку...")
                         .build();
 
             default:
