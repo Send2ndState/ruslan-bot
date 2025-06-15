@@ -167,6 +167,13 @@ public class TelegramTextHandler {
 
     public SendMessage processCallbackQuery(String callbackData, Long chatId, UserData userData) {
         switch (callbackData) {
+            case "continue_after_article":
+                userStateService.updateUserData(chatId, userData.withState(UserState.WAITING_FIRST_PALM));
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Отлично! Теперь отправьте фотографию первой ладони")
+                        .build();
+
             case "gender_male":
             case "gender_female":
                 String gender = callbackData.equals("gender_male") ? "Мужчина" : "Женщина";
