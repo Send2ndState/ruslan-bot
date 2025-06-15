@@ -2,12 +2,14 @@ package school.sorokin.event.manager.telegrambot.openai;
 
 import jakarta.annotation.Nonnull;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import school.sorokin.event.manager.telegrambot.config.GptConfig;
 import school.sorokin.event.manager.telegrambot.openai.api.ChatCompletionRequest;
 import school.sorokin.event.manager.telegrambot.openai.api.Message;
 import school.sorokin.event.manager.telegrambot.openai.api.OpenAIClient;
+import school.sorokin.event.manager.telegrambot.telegram.message.TelegramTextHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +17,7 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ChatGptService {
 
     private final OpenAIClient openAIClient;
@@ -27,7 +29,7 @@ public class ChatGptService {
             Long userId,
             String userTextInput
     ) {
-        return getResponseChatForUserWithImages(userId, userTextInput, null);
+        return getResponseChatForUserWithImages(userId, userTextInput, null,null);
     }
 
     @Nonnull
@@ -45,13 +47,14 @@ public class ChatGptService {
                 )
             );
         }
-        return getResponseChatForUserWithImages(userId, userTextInput, images);
+        return getResponseChatForUserWithImages(userId, userTextInput, null, images);
     }
 
     @Nonnull
     public String getResponseChatForUserWithImages(
             Long userId,
             String userTextInput,
+            String prompt,
             List<Map<String, Object>> newImages
     ) {
         log.info("Starting getResponseChatForUser for userId: {}, text: {}, images count: {}", 
@@ -64,7 +67,7 @@ public class ChatGptService {
             log.info("Adding system prompt for new chat");
             var systemMessage = new Message(
                     "system",
-                    gptConfig.getSystemPrompt()
+                    prompt
             );
             chatGptHistoryService.addMessageToHistory(userId, systemMessage);
         }
@@ -87,7 +90,18 @@ public class ChatGptService {
             // Create a message with image content
             List<Object> content = new ArrayList<>();
             content.add(Map.of("type", "text", "text", userTextInput));
-            content.addAll(allImages);
+            
+            // Добавляем изображения с указанием типа
+            for (Map<String, Object> image : allImages) {
+                @SuppressWarnings("unchecked")
+                Map<String, String> imageUrl = (Map<String, String>) image.get("image_url");
+                if (imageUrl != null && imageUrl.get("url") != null) {
+                    content.add(Map.of(
+                        "type", "image_url",
+                        "image_url", Map.of("url", imageUrl.get("url"))
+                    ));
+                }
+            }
             
             log.info("Message content structure: {}", content);
             

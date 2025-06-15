@@ -24,7 +24,7 @@ public class TelegramVoiceHandler {
         var file = telegramFileService.getFile(fileId);
         var text = transcribeVoiceToTextService.transcribe(file);
 
-        var gptGeneratedText = gptService.getResponseChatForUserWithImages(chatId, text, null);
+        var gptGeneratedText = gptService.getResponseChatForUserWithImages(chatId, text,null, null);
         return new SendMessage(chatId.toString(), gptGeneratedText);
     }
 }

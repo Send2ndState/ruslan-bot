@@ -33,6 +33,9 @@ public class TelegramTextHandler {
     @Value("${gpt.system-prompt-no-questions}")
     private String systemPromptWithoutQuestions;
 
+    @Value("${gpt.user-text-input}")
+    private String userTextInput;
+
     public SendMessage processTextMessage(Message message) {
         var text = message.getText();
         var chatId = message.getChatId();
@@ -112,7 +115,7 @@ public class TelegramTextHandler {
             // Все вопросы отвечены, отправляем анализ
             String prompt = buildPrompt(newUserData);
             var images = imageHandler.getCurrentAnalysisImages(chatId);
-            var gptResponse = gptService.getResponseChatForUserWithImages(chatId, prompt, 
+            var gptResponse = gptService.getResponseChatForUserWithImages(chatId, userTextInput, prompt,
                 images.stream()
                     .map(imageUrl -> Map.<String, Object>of("url", imageUrl))
                     .toList());
@@ -141,6 +144,7 @@ public class TelegramTextHandler {
     private String buildPrompt(UserData userData) {
         String basePrompt = userData.wantsDetailedAnalysis() ? systemPromptWithQuestions : systemPromptWithoutQuestions;
         
+
         if (userData.wantsDetailedAnalysis()) {
             return basePrompt.formatted(
                 userData.gender(),
