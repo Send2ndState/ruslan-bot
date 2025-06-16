@@ -1,6 +1,8 @@
 package school.sorokin.event.manager.telegrambot.command.handler;
 
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -17,12 +19,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class StartCommandHandler implements TelegramCommandHandler {
 
     private final UserStateService userStateService;
 
-    private final String ARTICLE_TEXT = "ЭТО ТЕКСТ СТАТЬИ.";
+    @Value("${tg.article-text}")
+    private String articleText;
 
     @Override
     public BotApiMethod<?> processCommand(Message message) {
@@ -53,7 +56,7 @@ public class StartCommandHandler implements TelegramCommandHandler {
         // Отправляем статью с кнопкой
         return SendMessage.builder()
             .chatId(chatId.toString())
-            .text(ARTICLE_TEXT)
+            .text(articleText)
             .replyMarkup(keyboard)
             .build();
     }
