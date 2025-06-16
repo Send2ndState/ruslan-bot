@@ -32,10 +32,7 @@ public class TelegramUpdateMessageHandler {
     }
 
     public BotApiMethod<?> handleMessage(Update update) {
-        log.info("Start message processing: update={}", update);
-        
         if (update.hasCallbackQuery()) {
-            log.info("Processing callback query: {}", update.getCallbackQuery().getData());
             var callbackQuery = update.getCallbackQuery();
             var response = getCallbackQueryHandler().processCallbackQuery(callbackQuery);
             getCallbackQueryHandler().answerCallbackQuery(callbackQuery);

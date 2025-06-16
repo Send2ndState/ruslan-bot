@@ -81,7 +81,7 @@ public class TelegramTextHandler {
 
         return SendMessage.builder()
                 .chatId(chatId)
-                .text("⬇️ Скажите, вы -")
+                .text("⬇️ Выберете, вы -")
                 .replyMarkup(keyboard)
                 .build();
     }

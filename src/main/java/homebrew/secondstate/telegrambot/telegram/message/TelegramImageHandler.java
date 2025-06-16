@@ -46,13 +46,13 @@ public class TelegramImageHandler {
             fileId = message.getDocument().getFileId();
         } else {
             return new SendMessage(chatId.toString(),
-                    "Не удалось обработать изображение. Пожалуйста, попробуйте отправить изображение еще раз.");
+                    "Прошу прощения, не могли бы вы отправить это фото еще раз?");
         }
 
         var file = telegramFileService.getFile(fileId);
         if (file == null) {
             return new SendMessage(chatId.toString(),
-                    "Не удалось загрузить изображение. Пожалуйста, попробуйте отправить изображение еще раз.");
+                    "Прошу прощения, не могли бы вы отправить это фото еще раз?");
         }
 
         try {
@@ -85,7 +85,7 @@ public class TelegramImageHandler {
         } catch (Exception e) {
             log.error("Error processing image", e);
             return new SendMessage(chatId.toString(),
-                    "Произошла ошибка при обработке изображения. Пожалуйста, попробуйте еще раз.");
+                    "Прошу прощения, не могли бы вы отправить это фото еще раз?");
         }
     }
 
